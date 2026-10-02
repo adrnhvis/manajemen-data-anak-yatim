@@ -18,4 +18,21 @@ class Household extends Model
     {
         return $this->hasMany(Child::class);
     }
+
+    public function scopeForUser($query, User $user)
+    {
+        if ($user->hasRole('super_admin')) {
+            return $query;
+        }
+
+        if (!$user->organization_unit_id) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $accessibleChildIds = Child::query()->forUser($user)->select('children.id');
+
+        return $query
+            ->whereHas('children', fn ($children) => $children->whereIn('children.id', $accessibleChildIds))
+            ->whereDoesntHave('children', fn ($children) => $children->whereNotIn('children.id', $accessibleChildIds));
+    }
 }

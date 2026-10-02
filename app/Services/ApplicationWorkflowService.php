@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ApplicationStatus;
+use App\Enums\ReviewLevel;
 use App\Exceptions\InvalidWorkflowTransitionException;
 use App\Models\Application;
 use App\Models\User;
@@ -16,34 +17,41 @@ class ApplicationWorkflowService
     public function submit(User $user, Application $application, ?string $note = null): Application
     {
         return $this->transition($user, $application, 'submit', ApplicationStatus::SUBMITTED, [
-            ApplicationStatus::DRAFT,
-            ApplicationStatus::REVISION_REQUIRED,
-        ], $note);
+            [ApplicationStatus::DRAFT, ReviewLevel::VILLAGE],
+            [ApplicationStatus::REVISION_REQUIRED, ReviewLevel::VILLAGE],
+        ], ReviewLevel::DISTRICT, $note);
     }
 
     public function requestRevision(User $user, Application $application, string $note): Application
     {
         $this->requireNote($note, 'request_revision');
-        return $this->transition($user, $application, 'request_revision', ApplicationStatus::REVISION_REQUIRED, [ApplicationStatus::SUBMITTED], $note);
+        return $this->transition($user, $application, 'request_revision', ApplicationStatus::REVISION_REQUIRED, [
+            [ApplicationStatus::SUBMITTED, ReviewLevel::DISTRICT],
+            [ApplicationStatus::VALIDATED, ReviewLevel::REGENCY],
+        ], ReviewLevel::VILLAGE, $note);
     }
 
     public function validate(User $user, Application $application, ?string $note = null): Application
     {
-        return $this->transition($user, $application, 'validate', ApplicationStatus::VALIDATED, [ApplicationStatus::SUBMITTED], $note);
+        return $this->transition($user, $application, 'validate', ApplicationStatus::VALIDATED, [
+            [ApplicationStatus::SUBMITTED, ReviewLevel::DISTRICT],
+        ], ReviewLevel::REGENCY, $note);
     }
 
     public function verify(User $user, Application $application, ?string $note = null): Application
     {
-        return $this->transition($user, $application, 'verify', ApplicationStatus::VERIFIED, [ApplicationStatus::VALIDATED], $note);
+        return $this->transition($user, $application, 'verify', ApplicationStatus::VERIFIED, [
+            [ApplicationStatus::VALIDATED, ReviewLevel::REGENCY],
+        ], null, $note);
     }
 
     public function reject(User $user, Application $application, string $note): Application
     {
         $this->requireNote($note, 'reject');
         return $this->transition($user, $application, 'reject', ApplicationStatus::REJECTED, [
-            ApplicationStatus::SUBMITTED,
-            ApplicationStatus::VALIDATED,
-        ], $note);
+            [ApplicationStatus::SUBMITTED, ReviewLevel::DISTRICT],
+            [ApplicationStatus::VALIDATED, ReviewLevel::REGENCY],
+        ], null, $note);
     }
 
     private function transition(
@@ -51,21 +59,34 @@ class ApplicationWorkflowService
         Application $application,
         string $action,
         ApplicationStatus $toStatus,
-        array $fromStatuses,
+        array $fromTransitions,
+        ?ReviewLevel $toReviewLevel,
         ?string $note,
     ): Application {
-        return DB::transaction(function () use ($user, $application, $action, $toStatus, $fromStatuses, $note) {
+        return DB::transaction(function () use ($user, $application, $action, $toStatus, $fromTransitions, $toReviewLevel, $note) {
             $locked = Application::query()->whereKey($application->getKey())->lockForUpdate()->firstOrFail();
             $current = $locked->status instanceof ApplicationStatus
                 ? $locked->status
                 : ApplicationStatus::from((string) $locked->status);
+            $currentReviewLevel = $locked->current_review_level instanceof ReviewLevel
+                ? $locked->current_review_level
+                : ReviewLevel::tryFrom((string) $locked->current_review_level);
+
+            $allowedFromState = false;
+            foreach ($fromTransitions as [$fromStatus, $fromReviewLevel]) {
+                if ($current === $fromStatus && $currentReviewLevel === $fromReviewLevel) {
+                    $allowedFromState = true;
+                    break;
+                }
+            }
 
             $ability = $action === 'request_revision' ? 'requestRevision' : $action;
-            if (!in_array($current, $fromStatuses, true) || !Gate::forUser($user)->allows($ability, $locked)) {
+            if (!$allowedFromState || !Gate::forUser($user)->allows($ability, $locked)) {
                 throw new InvalidWorkflowTransitionException($locked->getKey(), $current->value, $action);
             }
 
             $locked->status = $toStatus;
+            $locked->current_review_level = $toReviewLevel;
             if ($action === 'submit') {
                 $locked->submitted_at = now();
             } elseif ($action === 'validate') {

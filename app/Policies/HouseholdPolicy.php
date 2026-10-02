@@ -3,8 +3,8 @@
 namespace App\Policies;
 
 use App\Models\Household;
+use App\Models\Child;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class HouseholdPolicy
 {
@@ -13,7 +13,8 @@ class HouseholdPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view children');
+        return $user->hasPermissionTo('view children')
+            && ($user->hasRole('super_admin') || (bool) $user->organization_unit_id);
     }
 
     /**
@@ -21,15 +22,16 @@ class HouseholdPolicy
      */
     public function view(User $user, Household $household): bool
     {
-        return $user->hasPermissionTo('view children');
+        return $user->hasPermissionTo('view children')
+            && Household::query()->forUser($user)->whereKey($household->getKey())->exists();
     }
 
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
+    public function create(User $user, Child $child): bool
     {
-        return $user->hasPermissionTo('create children');
+        return $user->hasPermissionTo('create children') && $user->canAccessChild($child);
     }
 
     /**
@@ -37,7 +39,8 @@ class HouseholdPolicy
      */
     public function update(User $user, Household $household): bool
     {
-        return $user->hasPermissionTo('update children');
+        return $user->hasPermissionTo('update children')
+            && Household::query()->forUser($user)->whereKey($household->getKey())->exists();
     }
 
     /**
@@ -45,7 +48,8 @@ class HouseholdPolicy
      */
     public function delete(User $user, Household $household): bool
     {
-        return $user->hasPermissionTo('delete children');
+        return $user->hasPermissionTo('delete children')
+            && Household::query()->forUser($user)->whereKey($household->getKey())->exists();
     }
 
     /**
@@ -53,7 +57,8 @@ class HouseholdPolicy
      */
     public function restore(User $user, Household $household): bool
     {
-        return $user->hasPermissionTo('delete children');
+        return $user->hasPermissionTo('delete children')
+            && Household::query()->forUser($user)->whereKey($household->getKey())->exists();
     }
 
     /**
@@ -61,6 +66,7 @@ class HouseholdPolicy
      */
     public function forceDelete(User $user, Household $household): bool
     {
-        return $user->hasPermissionTo('delete children');
+        return $user->hasPermissionTo('delete children')
+            && Household::query()->forUser($user)->whereKey($household->getKey())->exists();
     }
 }

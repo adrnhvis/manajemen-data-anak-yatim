@@ -30,4 +30,17 @@ class ChildRelationship extends Model
     {
         return $this->belongsTo(Person::class);
     }
+
+    public function scopeForUser($query, User $user)
+    {
+        if ($user->hasRole('super_admin')) {
+            return $query;
+        }
+
+        if (!$user->organization_unit_id) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('child', fn ($children) => $children->forUser($user));
+    }
 }

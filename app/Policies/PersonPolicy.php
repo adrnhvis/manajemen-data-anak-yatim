@@ -3,8 +3,8 @@
 namespace App\Policies;
 
 use App\Models\Person;
+use App\Models\Child;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class PersonPolicy
 {
@@ -13,7 +13,8 @@ class PersonPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view children');
+        return $user->hasPermissionTo('view children')
+            && ($user->hasRole('super_admin') || (bool) $user->organization_unit_id);
     }
 
     /**
@@ -21,15 +22,16 @@ class PersonPolicy
      */
     public function view(User $user, Person $person): bool
     {
-        return $user->hasPermissionTo('view children');
+        return $user->hasPermissionTo('view children')
+            && Person::query()->forUser($user)->whereKey($person->getKey())->exists();
     }
 
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
+    public function create(User $user, Child $child): bool
     {
-        return $user->hasPermissionTo('create children');
+        return $user->hasPermissionTo('create children') && $user->canAccessChild($child);
     }
 
     /**
@@ -37,7 +39,8 @@ class PersonPolicy
      */
     public function update(User $user, Person $person): bool
     {
-        return $user->hasPermissionTo('update children');
+        return $user->hasPermissionTo('update children')
+            && Person::query()->forUser($user)->whereKey($person->getKey())->exists();
     }
 
     /**
@@ -45,7 +48,8 @@ class PersonPolicy
      */
     public function delete(User $user, Person $person): bool
     {
-        return $user->hasPermissionTo('delete children');
+        return $user->hasPermissionTo('delete children')
+            && Person::query()->forUser($user)->whereKey($person->getKey())->exists();
     }
 
     /**
@@ -53,7 +57,8 @@ class PersonPolicy
      */
     public function restore(User $user, Person $person): bool
     {
-        return $user->hasPermissionTo('delete children');
+        return $user->hasPermissionTo('delete children')
+            && Person::query()->forUser($user)->whereKey($person->getKey())->exists();
     }
 
     /**
@@ -61,6 +66,7 @@ class PersonPolicy
      */
     public function forceDelete(User $user, Person $person): bool
     {
-        return $user->hasPermissionTo('delete children');
+        return $user->hasPermissionTo('delete children')
+            && Person::query()->forUser($user)->whereKey($person->getKey())->exists();
     }
 }

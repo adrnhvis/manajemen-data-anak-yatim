@@ -2,9 +2,10 @@
 
 namespace App\Policies;
 
+use App\Enums\ApplicationStatus;
+use App\Models\Application;
 use App\Models\BankAccount;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class BankAccountPolicy
 {
@@ -13,7 +14,8 @@ class BankAccountPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view children');
+        return $user->hasPermissionTo('view applications')
+            && ($user->hasRole('super_admin') || (bool) $user->organization_unit_id);
     }
 
     /**
@@ -21,15 +23,18 @@ class BankAccountPolicy
      */
     public function view(User $user, BankAccount $bankAccount): bool
     {
-        return $user->hasPermissionTo('view children');
+        return $user->hasPermissionTo('view applications')
+            && BankAccount::query()->forUser($user)->whereKey($bankAccount->getKey())->exists();
     }
 
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
+    public function create(User $user, Application $application): bool
     {
-        return $user->hasPermissionTo('create children');
+        return $user->hasPermissionTo('create applications')
+            && $user->canAccessApplication($application)
+            && $this->applicationIsEditable($application);
     }
 
     /**
@@ -37,7 +42,9 @@ class BankAccountPolicy
      */
     public function update(User $user, BankAccount $bankAccount): bool
     {
-        return $user->hasPermissionTo('update children');
+        return $user->hasPermissionTo('update applications')
+            && BankAccount::query()->forUser($user)->whereKey($bankAccount->getKey())->exists()
+            && $this->applicationIsEditable($bankAccount->application);
     }
 
     /**
@@ -45,7 +52,9 @@ class BankAccountPolicy
      */
     public function delete(User $user, BankAccount $bankAccount): bool
     {
-        return $user->hasPermissionTo('delete children');
+        return $user->hasPermissionTo('update applications')
+            && BankAccount::query()->forUser($user)->whereKey($bankAccount->getKey())->exists()
+            && $this->applicationIsEditable($bankAccount->application);
     }
 
     /**
@@ -53,7 +62,7 @@ class BankAccountPolicy
      */
     public function restore(User $user, BankAccount $bankAccount): bool
     {
-        return $user->hasPermissionTo('delete children');
+        return $this->delete($user, $bankAccount);
     }
 
     /**
@@ -61,6 +70,14 @@ class BankAccountPolicy
      */
     public function forceDelete(User $user, BankAccount $bankAccount): bool
     {
-        return $user->hasPermissionTo('delete children');
+        return $this->delete($user, $bankAccount);
+    }
+
+    private function applicationIsEditable(Application $application): bool
+    {
+        return in_array($application->status, [
+            ApplicationStatus::DRAFT,
+            ApplicationStatus::REVISION_REQUIRED,
+        ], true);
     }
 }

@@ -32,4 +32,17 @@ class BankAccount extends Model
     {
         return $this->belongsTo(Application::class);
     }
+
+    public function scopeForUser($query, User $user)
+    {
+        if ($user->hasRole('super_admin')) {
+            return $query;
+        }
+
+        if (!$user->organization_unit_id) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('application', fn ($applications) => $applications->forUser($user));
+    }
 }

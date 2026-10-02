@@ -54,8 +54,12 @@ class Child extends Model
 
     public function scopeForUser($query, User $user)
     {
-        if ($user->hasRole('super_admin') || !$user->organization_unit_id) {
+        if ($user->hasRole('super_admin')) {
             return $query;
+        }
+
+        if (!$user->organization_unit_id) {
+            return $query->whereRaw('1 = 0');
         }
 
         $org = $user->organizationUnit;

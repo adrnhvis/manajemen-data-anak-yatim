@@ -18,20 +18,27 @@ class DocumentService
 {
     public function upload(User $user, Application $application, DocumentCategory $category, UploadedFile $file): Document
     {
-        Gate::forUser($user)->authorize('upload', $application);
-        $this->validateFile($category, $file);
+        return DB::transaction(function () use ($user, $application, $category, $file) {
+            $application = Application::query()->whereKey($application->getKey())->lockForUpdate()->firstOrFail();
+            $category = DocumentCategory::query()->whereKey($category->getKey())->lockForUpdate()->firstOrFail();
 
-        return $this->storeVersion($user, $application, $category, $file);
+            Gate::forUser($user)->authorize('upload', $application);
+            $this->validateFile($category, $file);
+
+            return $this->storeVersion($user, $application, $category, $file);
+        });
     }
 
     public function replace(User $user, Document $document, UploadedFile $file): Document
     {
-        Gate::forUser($user)->authorize('replace', $document);
-        $document->loadMissing('category', 'application');
-        $this->validateFile($document->category, $file);
-
         return DB::transaction(function () use ($user, $document, $file) {
+            Application::query()->whereKey($document->application_id)->lockForUpdate()->firstOrFail();
             $document = Document::query()->whereKey($document->getKey())->lockForUpdate()->firstOrFail();
+            $document->loadMissing('category', 'application');
+
+            Gate::forUser($user)->authorize('replace', $document);
+            $this->validateFile($document->category, $file);
+
             $number = ((int) $document->versions()->max('version_number')) + 1;
             return $this->writeVersion($user, $document, $file, $number);
         });
@@ -39,8 +46,14 @@ class DocumentService
 
     public function delete(User $user, Document $document): void
     {
-        Gate::forUser($user)->authorize('delete', $document);
-        $document->delete();
+        DB::transaction(function () use ($user, $document) {
+            Application::query()->whereKey($document->application_id)->lockForUpdate()->firstOrFail();
+            $document = Document::query()->whereKey($document->getKey())->lockForUpdate()->firstOrFail();
+            $document->loadMissing('application');
+
+            Gate::forUser($user)->authorize('delete', $document);
+            $document->delete();
+        });
     }
 
     public function download(User $user, DocumentVersion $version): string
@@ -113,7 +126,12 @@ class DocumentService
         $extension = strtolower($file->getClientOriginalExtension());
         $mime = $file->getMimeType();
         $allowed = $category->allowed_mime_types ?: ['application/pdf', 'image/jpeg'];
-        $extensions = ['pdf' => 'application/pdf', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg'];
+        $extensions = [
+            'pdf' => 'application/pdf',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+        ];
 
         if (!isset($extensions[$extension]) || $extensions[$extension] !== $mime || !in_array($mime, $allowed, true)) {
             throw ValidationException::withMessages(['file' => 'The document type is not allowed.']);
@@ -122,7 +140,8 @@ class DocumentService
         $signature = file_get_contents($file->getRealPath(), false, null, 0, 12);
         $validSignature = match ($mime) {
             'application/pdf' => str_starts_with($signature, '%PDF-'),
-            'image/jpeg' => substr($signature, 0, 2) === "\\xFF\\xD8",
+            'image/jpeg' => substr($signature, 0, 2) === "\xFF\xD8",
+            'image/png' => str_starts_with($signature, "\x89PNG\r\n\x1a\n"),
             default => false,
         };
 

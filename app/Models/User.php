@@ -3,7 +3,6 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -67,8 +66,12 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($this->hasRole('super_admin') || !$this->organization_unit_id) {
+        if ($this->hasRole('super_admin')) {
             return true;
+        }
+
+        if (!$this->organization_unit_id) {
+            return false;
         }
 
         $org = $this->organizationUnit;
