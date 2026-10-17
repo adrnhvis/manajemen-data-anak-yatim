@@ -30,14 +30,14 @@ class ApplicationPolicy
 
     public function create(User $user): bool
     {
-        if (!$user->hasPermissionTo('create applications')) {
+        if (! $user->hasPermissionTo('create applications')) {
             return false;
         }
 
         $childId = request()->input('child_id');
         if ($childId) {
             $child = Child::find($childId);
-            if (!$child || !$user->canAccessChild($child)) {
+            if (! $child || ! $user->canAccessChild($child)) {
                 return false;
             }
         }
@@ -47,70 +47,76 @@ class ApplicationPolicy
 
     public function update(User $user, Application $application): bool
     {
-        if (!$user->hasPermissionTo('update applications') || !$user->canAccessApplication($application)) {
+        if (! $user->hasPermissionTo('update applications') || ! $user->canAccessApplication($application)) {
             return false;
         }
 
         $status = $application->status instanceof ApplicationStatus ? $application->status->value : $application->status;
+
         return in_array($status, [ApplicationStatus::DRAFT->value, ApplicationStatus::REVISION_REQUIRED->value], true)
             && $application->current_review_level === ReviewLevel::VILLAGE;
     }
 
     public function delete(User $user, Application $application): bool
     {
-        if (!$user->hasPermissionTo('update applications') || !$user->canAccessApplication($application)) {
+        if (! $user->hasPermissionTo('update applications') || ! $user->canAccessApplication($application)) {
             return false;
         }
 
         $status = $application->status instanceof ApplicationStatus ? $application->status->value : $application->status;
+
         return $status === ApplicationStatus::DRAFT->value
             && $application->current_review_level === ReviewLevel::VILLAGE;
     }
 
     public function submit(User $user, Application $application): bool
     {
-        if (!$user->hasPermissionTo('submit applications') || !$user->canAccessApplication($application)) {
+        if (! $user->hasPermissionTo('submit applications') || ! $user->canAccessApplication($application)) {
             return false;
         }
 
         $status = $application->status instanceof ApplicationStatus ? $application->status->value : $application->status;
+
         return in_array($status, [ApplicationStatus::DRAFT->value, ApplicationStatus::REVISION_REQUIRED->value], true)
             && $application->current_review_level === ReviewLevel::VILLAGE;
     }
 
     public function review(User $user, Application $application): bool
     {
-        if (!$user->hasRole('admin_kecamatan')
-            || !$user->hasPermissionTo('review applications')
-            || !$user->canAccessApplication($application)) {
+        if (! $user->hasRole('admin_kecamatan')
+            || ! $user->hasPermissionTo('review applications')
+            || ! $user->canAccessApplication($application)) {
             return false;
         }
 
         $status = $application->status instanceof ApplicationStatus ? $application->status->value : $application->status;
+
         return $status === ApplicationStatus::SUBMITTED->value
             && $application->current_review_level === ReviewLevel::DISTRICT;
     }
 
     public function validate(User $user, Application $application): bool
     {
-        if (!$user->hasRole('admin_kecamatan')
-            || !$user->hasPermissionTo('validate applications')
-            || !$user->canAccessApplication($application)) {
+        if (! $user->hasRole('admin_kecamatan')
+            || ! $user->hasPermissionTo('validate applications')
+            || ! $user->canAccessApplication($application)) {
             return false;
         }
 
         $status = $application->status instanceof ApplicationStatus ? $application->status->value : $application->status;
+
         return $status === ApplicationStatus::SUBMITTED->value
             && $application->current_review_level === ReviewLevel::DISTRICT;
     }
 
     public function requestRevision(User $user, Application $application): bool
     {
-        if (!$user->hasPermissionTo('request revision') || !$user->canAccessApplication($application)) {
+        if (! $user->hasPermissionTo('request revision') || ! $user->canAccessApplication($application)) {
             return false;
         }
 
         $status = $application->status instanceof ApplicationStatus ? $application->status->value : $application->status;
+
         return ($user->hasRole('admin_kecamatan')
                 && $status === ApplicationStatus::SUBMITTED->value
             && $application->current_review_level === ReviewLevel::DISTRICT)
@@ -121,25 +127,27 @@ class ApplicationPolicy
 
     public function verify(User $user, Application $application): bool
     {
-        if (!$user->hasRole('admin_kabupaten')
-            || !$user->hasPermissionTo('verify applications')
-            || !$user->canAccessApplication($application)) {
+        if (! $user->hasRole('admin_kabupaten')
+            || ! $user->hasPermissionTo('verify applications')
+            || ! $user->canAccessApplication($application)) {
             return false;
         }
 
         $status = $application->status instanceof ApplicationStatus ? $application->status->value : $application->status;
+
         return $status === ApplicationStatus::VALIDATED->value
             && $application->current_review_level === ReviewLevel::REGENCY;
     }
 
     public function reject(User $user, Application $application): bool
     {
-        if (!$user->hasPermissionTo('reject applications') || !$user->canAccessApplication($application)) {
+        if (! $user->hasPermissionTo('reject applications') || ! $user->canAccessApplication($application)) {
             return false;
         }
 
         $status = $application->status instanceof ApplicationStatus ? $application->status->value : $application->status;
-        return (($user->hasRole('admin_kecamatan')
+
+        return ($user->hasRole('admin_kecamatan')
                 && $status === ApplicationStatus::SUBMITTED->value
                 && $application->current_review_level === ReviewLevel::DISTRICT)
             || ($user->hasRole('admin_kabupaten')
@@ -147,6 +155,6 @@ class ApplicationPolicy
                 && $application->current_review_level === ReviewLevel::DISTRICT)
             || ($user->hasRole('admin_kabupaten')
                 && $status === ApplicationStatus::VALIDATED->value
-                && $application->current_review_level === ReviewLevel::REGENCY));
+                && $application->current_review_level === ReviewLevel::REGENCY);
     }
 }

@@ -228,7 +228,7 @@ Backlog ini disusun berdasarkan codebase V1. Task `DONE` berarti implementasi da
 - **Dependency:** CHILD-01, ADM-01.
 - **Acceptance criteria:** Form memakai relasi Eloquent yang ada; NIK duplikat ditolak; create/update alamat memeriksa scope alamat baru; query daftar dibatasi scope user; tidak menambah business rules orphan yang belum disepakati.
 - **Test wajib dibuat/dijalankan:** Filament/Livewire test CRUD, NIK duplikat, user luar-scope, dan pindah alamat lintas-scope (`TEST-05`).
-- **Status:** TODO
+- **Status:** DONE
 
 ### FIL-04: Person dan Child Relationship Management
 
@@ -237,7 +237,7 @@ Backlog ini disusun berdasarkan codebase V1. Task `DONE` berarti implementasi da
 - **Dependency:** CHILD-01, FIL-03.
 - **Acceptance criteria:** Relasi memakai `relationship_type` enum yang tersedia; data orang dan child tidak diduplikasi; jumlah relasi ayah/ibu/wali tidak dipaksakan di UI sebelum aturan jumlah disepakati.
 - **Test wajib dibuat/dijalankan:** Test create/edit relasi, policy scope, dan status Person valid.
-- **Status:** TODO
+- **Status:** DONE
 
 ### FIL-05: Application CRUD dan Period Year
 
@@ -246,7 +246,7 @@ Backlog ini disusun berdasarkan codebase V1. Task `DONE` berarti implementasi da
 - **Dependency:** APP-01, FIL-03.
 - **Acceptance criteria:** Create memilih child dalam scope; `period_year` disimpan sebagai tahun program; duplicate child/year ditolak oleh database dan ditampilkan sebagai error yang dapat dipahami; perubahan data hanya pada state yang diizinkan Policy.
 - **Test wajib dibuat/dijalankan:** Filament create/update tests, duplicate pair rejection, cross-scope denial, dan locked-state edit denial (`TEST-05`).
-- **Status:** TODO
+- **Status:** DONE
 
 ### FIL-06: Workflow Actions Melalui Policy dan ApplicationWorkflowService
 
@@ -255,7 +255,7 @@ Backlog ini disusun berdasarkan codebase V1. Task `DONE` berarti implementasi da
 - **Dependency:** WF-01, REV-01, FIL-05.
 - **Acceptance criteria:** Action hanya mempresentasikan input dan hasil; setiap action melakukan Policy check dan memanggil `ApplicationWorkflowService`; Filament tidak mengubah status atau menulis WorkflowHistory langsung; status/level dan note tampil dari data tersimpan.
 - **Test wajib dibuat/dijalankan:** Livewire action tests untuk allowed/denied actions, transaksi/history, note wajib, dan urutan review (`TEST-05`).
-- **Status:** BLOCKED
+- **Status:** DONE
 
 ### FIL-07: Document Category dan Document Actions
 
@@ -263,6 +263,8 @@ Backlog ini disusun berdasarkan codebase V1. Task `DONE` berarti implementasi da
 - **File/module kemungkinan disentuh:** Document/Application Resource relation manager, `DocumentPolicy`, `DocumentService`.
 - **Dependency:** DOC-01, FIL-05.
 - **Acceptance criteria:** Semua operasi file memanggil `DocumentService`; visibility bukan kontrol keamanan; download tetap privat; UI menampilkan versi dan validasi yang berasal dari service/category.
+- **Test wajib dibuat/dijalankan:** Filament/Livewire file action tests dan authorization untuk tiap operasi (`TEST-05`, `TEST-03`).
+- **Status:** DONE
 - **Test wajib dibuat/dijalankan:** Filament/Livewire file action tests dan authorization untuk tiap operasi (`TEST-05`, `TEST-03`).
 - **Status:** TODO
 

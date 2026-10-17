@@ -27,6 +27,7 @@ class DummyDataSeeder extends Seeder
         $villages = Village::all();
         if ($villages->isEmpty()) {
             $this->command->warn('No villages found. Skipping DummyDataSeeder.');
+
             return;
         }
 
@@ -46,7 +47,7 @@ class DummyDataSeeder extends Seeder
         foreach ($households as $household) {
             // Randomly 1 to 3 children per household
             $numChildren = rand(1, 3);
-            
+
             // Shared address per household (typically)
             $address = Address::factory()->create([
                 'village_id' => $villages->random()->id,
@@ -78,7 +79,7 @@ class DummyDataSeeder extends Seeder
                     'relationship_type' => RelationshipType::MOTHER,
                     'is_primary' => true,
                 ]);
-                
+
                 // Randomly add a guardian
                 if (rand(1, 10) > 8) {
                     ChildRelationship::create([
@@ -93,7 +94,7 @@ class DummyDataSeeder extends Seeder
 
         // 4. Create Applications
         $statuses = ApplicationStatus::cases();
-        
+
         foreach ($children as $index => $child) {
             // Some children have 2 applications (2025 and 2026)
             $years = rand(1, 10) > 7 ? [2025, 2026] : [2026];
@@ -101,9 +102,9 @@ class DummyDataSeeder extends Seeder
             foreach ($years as $year) {
                 // Ensure unique status distribution
                 $status = $statuses[array_rand($statuses)];
-                
+
                 $appUser = $users->random() ?? $superAdmin;
-                
+
                 $submittedAt = null;
                 $validatedAt = null;
                 $verifiedAt = null;
@@ -111,7 +112,7 @@ class DummyDataSeeder extends Seeder
                 if ($status !== ApplicationStatus::DRAFT) {
                     $submittedAt = now()->subDays(rand(10, 20));
                 }
-                
+
                 if (in_array($status, [ApplicationStatus::VALIDATED, ApplicationStatus::VERIFIED, ApplicationStatus::REJECTED])) {
                     $validatedAt = now()->subDays(rand(5, 9));
                 }
@@ -134,7 +135,7 @@ class DummyDataSeeder extends Seeder
                 // Sometimes share same account number across different apps to prove non-unique constraint
                 $sharedAccount = '1111-2222-3333';
                 $accountNum = rand(1, 10) > 8 ? $sharedAccount : fake()->numerify('11##-####-####');
-                
+
                 BankAccount::factory()->create([
                     'application_id' => $application->id,
                     'account_number' => $accountNum,
@@ -151,7 +152,7 @@ class DummyDataSeeder extends Seeder
                         'acted_by' => $appUser->id,
                         'acted_at' => $submittedAt,
                     ]);
-                    
+
                     AuditLog::factory()->create([
                         'user_id' => $appUser->id,
                         'auditable_type' => Application::class,

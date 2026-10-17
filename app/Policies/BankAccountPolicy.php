@@ -30,11 +30,10 @@ class BankAccountPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user, Application $application): bool
+    public function create(User $user): bool
     {
         return $user->hasPermissionTo('create applications')
-            && $user->canAccessApplication($application)
-            && $this->applicationIsEditable($application);
+            && ($user->hasRole('super_admin') || (bool) $user->organization_unit_id);
     }
 
     /**

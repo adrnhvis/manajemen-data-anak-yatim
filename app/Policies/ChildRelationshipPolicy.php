@@ -21,11 +21,13 @@ class ChildRelationshipPolicy
             && ChildRelationship::query()->forUser($user)->whereKey($relationship->getKey())->exists();
     }
 
-    public function create(User $user, Child $child, Person $person): bool
+    public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create children')
-            && $user->canAccessChild($child)
-            && $this->personCanBeLinkedWithinScope($user, $person);
+        if (! $user->hasPermissionTo('create children')) {
+            return false;
+        }
+
+        return $user->hasRole('super_admin') || (bool) $user->organization_unit_id;
     }
 
     public function update(User $user, ChildRelationship $relationship): bool
@@ -55,7 +57,7 @@ class ChildRelationshipPolicy
             return true;
         }
 
-        if (!$user->organization_unit_id) {
+        if (! $user->organization_unit_id) {
             return false;
         }
 

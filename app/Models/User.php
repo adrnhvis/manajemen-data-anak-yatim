@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\OrganizationUnitType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -62,7 +63,7 @@ class User extends Authenticatable
 
     public function isInOrganizationScope(string|int|null $villageId): bool
     {
-        if (!$villageId) {
+        if (! $villageId) {
             return false;
         }
 
@@ -70,26 +71,28 @@ class User extends Authenticatable
             return true;
         }
 
-        if (!$this->organization_unit_id) {
+        if (! $this->organization_unit_id) {
             return false;
         }
 
         $org = $this->organizationUnit;
-        if (!$org) {
+        if (! $org) {
             return false;
         }
 
-        if ($org->type === \App\Enums\OrganizationUnitType::VILLAGE) {
+        if ($org->type === OrganizationUnitType::VILLAGE) {
             return $org->village_id === $villageId;
         }
 
-        if ($org->type === \App\Enums\OrganizationUnitType::DISTRICT) {
+        if ($org->type === OrganizationUnitType::DISTRICT) {
             $village = Village::find($villageId);
+
             return $village && $village->district_id === $org->district_id;
         }
 
-        if ($org->type === \App\Enums\OrganizationUnitType::REGENCY) {
+        if ($org->type === OrganizationUnitType::REGENCY) {
             $village = Village::with('district')->find($villageId);
+
             return $village && $village->district && $village->district->regency_id === $org->regency_id;
         }
 
@@ -100,15 +103,17 @@ class User extends Authenticatable
     {
         $child->loadMissing('address.village.district');
         $villageId = $child->address?->village_id;
+
         return $this->isInOrganizationScope($villageId);
     }
 
     public function canAccessApplication(Application $application): bool
     {
         $application->loadMissing('child.address.village.district');
-        if (!$application->child) {
+        if (! $application->child) {
             return false;
         }
+
         return $this->canAccessChild($application->child);
     }
 }

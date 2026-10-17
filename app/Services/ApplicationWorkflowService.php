@@ -25,6 +25,7 @@ class ApplicationWorkflowService
     public function requestRevision(User $user, Application $application, string $note): Application
     {
         $this->requireNote($note, 'request_revision');
+
         return $this->transition($user, $application, 'request_revision', ApplicationStatus::REVISION_REQUIRED, [
             [ApplicationStatus::SUBMITTED, ReviewLevel::DISTRICT],
             [ApplicationStatus::VALIDATED, ReviewLevel::REGENCY],
@@ -48,6 +49,7 @@ class ApplicationWorkflowService
     public function reject(User $user, Application $application, string $note): Application
     {
         $this->requireNote($note, 'reject');
+
         return $this->transition($user, $application, 'reject', ApplicationStatus::REJECTED, [
             [ApplicationStatus::SUBMITTED, ReviewLevel::DISTRICT],
             [ApplicationStatus::VALIDATED, ReviewLevel::REGENCY],
@@ -81,7 +83,7 @@ class ApplicationWorkflowService
             }
 
             $ability = $action === 'request_revision' ? 'requestRevision' : $action;
-            if (!$allowedFromState || !Gate::forUser($user)->allows($ability, $locked)) {
+            if (! $allowedFromState || ! Gate::forUser($user)->allows($ability, $locked)) {
                 throw new InvalidWorkflowTransitionException($locked->getKey(), $current->value, $action);
             }
 

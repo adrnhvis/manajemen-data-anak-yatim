@@ -24,7 +24,7 @@ class OrganizationUnitSeeder extends Seeder
                     'regency_id' => $regency->id,
                 ],
                 [
-                    'name' => 'Kabupaten ' . $regency->name,
+                    'name' => 'Kabupaten '.$regency->name,
                     'is_active' => true,
                 ]
             );
@@ -38,7 +38,7 @@ class OrganizationUnitSeeder extends Seeder
                         'district_id' => $district->id,
                     ],
                     [
-                        'name' => 'Kecamatan ' . $district->name,
+                        'name' => 'Kecamatan '.$district->name,
                         'is_active' => true,
                     ]
                 );
@@ -53,7 +53,7 @@ class OrganizationUnitSeeder extends Seeder
                             'village_id' => $village->id,
                         ],
                         [
-                            'name' => 'Kelurahan/Desa ' . $village->name,
+                            'name' => 'Kelurahan/Desa '.$village->name,
                             'is_active' => true,
                         ]
                     );

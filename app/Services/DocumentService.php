@@ -8,6 +8,7 @@ use App\Models\DocumentCategory;
 use App\Models\DocumentVersion;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -40,6 +41,7 @@ class DocumentService
             $this->validateFile($document->category, $file);
 
             $number = ((int) $document->versions()->max('version_number')) + 1;
+
             return $this->writeVersion($user, $document, $file, $number);
         });
     }
@@ -60,9 +62,10 @@ class DocumentService
     {
         $version->loadMissing('document.application');
         Gate::forUser($user)->authorize('view', $version->document);
-        if (!Storage::disk('local')->exists($version->storage_path)) {
+        if (! Storage::disk('local')->exists($version->storage_path)) {
             throw new RuntimeException('Document file is unavailable.');
         }
+
         return Storage::disk('local')->path($version->storage_path);
     }
 
@@ -74,7 +77,7 @@ class DocumentService
             $document->document_category_id = $category->getKey();
             $document->original_filename = $file->getClientOriginalName();
             $document->uploaded_by = $user->getKey();
-            $document->uploaded_at = \Illuminate\Support\Carbon::parse(date('Y-m-d H:i:s'));
+            $document->uploaded_at = Carbon::parse(date('Y-m-d H:i:s'));
             $document->storage_path = '';
             $document->mime_type = $file->getMimeType();
             $document->file_size = $file->getSize();
@@ -89,7 +92,7 @@ class DocumentService
     {
         $path = 'applications/'.$document->application_id.'/documents/'.$document->getKey().'/'.$number.'-'.bin2hex(random_bytes(12));
         $disk = Storage::disk('local');
-        if (!$disk->putFileAs(dirname($path), $file, basename($path))) {
+        if (! $disk->putFileAs(dirname($path), $file, basename($path))) {
             throw new RuntimeException('Document storage failed.');
         }
 
@@ -114,6 +117,7 @@ class DocumentService
                 'uploaded_by' => $user->getKey(),
                 'uploaded_at' => $version->uploaded_at,
             ]);
+
             return $document->refresh();
         } catch (\Throwable $exception) {
             $disk->delete($path);
@@ -133,7 +137,7 @@ class DocumentService
             'png' => 'image/png',
         ];
 
-        if (!isset($extensions[$extension]) || $extensions[$extension] !== $mime || !in_array($mime, $allowed, true)) {
+        if (! isset($extensions[$extension]) || $extensions[$extension] !== $mime || ! in_array($mime, $allowed, true)) {
             throw ValidationException::withMessages(['file' => 'The document type is not allowed.']);
         }
 
@@ -145,7 +149,7 @@ class DocumentService
             default => false,
         };
 
-        if (!$validSignature) {
+        if (! $validSignature) {
             throw ValidationException::withMessages(['file' => 'The file content does not match its declared type.']);
         }
 

@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Models\Person;
-use App\Models\Child;
 use App\Models\User;
 
 class PersonPolicy
@@ -29,9 +28,10 @@ class PersonPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user, Child $child): bool
+    public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create children') && $user->canAccessChild($child);
+        return $user->hasPermissionTo('create children')
+            && ($user->hasRole('super_admin') || (bool) $user->organization_unit_id);
     }
 
     /**

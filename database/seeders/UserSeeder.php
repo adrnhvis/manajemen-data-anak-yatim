@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Enums\OrganizationUnitType;
 use App\Models\OrganizationUnit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -34,7 +33,7 @@ class UserSeeder extends Seeder
         $orgKerinci = OrganizationUnit::where('name', 'Kecamatan Pangkalan Kerinci')->first();
         $orgKerinciKota = OrganizationUnit::where('name', 'Kelurahan/Desa Pangkalan Kerinci Kota')->first();
         $orgMakmur = OrganizationUnit::where('name', 'Kelurahan/Desa Makmur')->first();
-        
+
         $orgSeiKijang = OrganizationUnit::where('name', 'Kecamatan Bandar Sei Kijang')->first();
         $orgSekijang = OrganizationUnit::where('name', 'Kelurahan/Desa Sekijang')->first();
 

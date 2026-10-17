@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\LivingWith;
+use App\Enums\OrganizationUnitType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -38,24 +39,24 @@ class Address extends Model
             return $query;
         }
 
-        if (!$user->organization_unit_id) {
+        if (! $user->organization_unit_id) {
             return $query->whereRaw('1 = 0');
         }
 
         $organizationUnit = $user->organizationUnit;
-        if (!$organizationUnit) {
+        if (! $organizationUnit) {
             return $query->whereRaw('1 = 0');
         }
 
-        if ($organizationUnit->type === \App\Enums\OrganizationUnitType::VILLAGE) {
+        if ($organizationUnit->type === OrganizationUnitType::VILLAGE) {
             return $query->where('village_id', $organizationUnit->village_id);
         }
 
-        if ($organizationUnit->type === \App\Enums\OrganizationUnitType::DISTRICT) {
+        if ($organizationUnit->type === OrganizationUnitType::DISTRICT) {
             return $query->whereHas('village', fn ($villages) => $villages->where('district_id', $organizationUnit->district_id));
         }
 
-        if ($organizationUnit->type === \App\Enums\OrganizationUnitType::REGENCY) {
+        if ($organizationUnit->type === OrganizationUnitType::REGENCY) {
             return $query->whereHas('village.district', fn ($districts) => $districts->where('regency_id', $organizationUnit->regency_id));
         }
 

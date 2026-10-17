@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RoleAndPermissionSeeder extends Seeder
 {
@@ -14,7 +15,7 @@ class RoleAndPermissionSeeder extends Seeder
     public function run(): void
     {
         // Reset cached roles and permissions
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         // create permissions
         $permissions = [
@@ -62,7 +63,7 @@ class RoleAndPermissionSeeder extends Seeder
         // create roles and assign created permissions
 
         // 1. super_admin
-        // Has all system administrative rights, but we explicitly do NOT give 'verify applications' 
+        // Has all system administrative rights, but we explicitly do NOT give 'verify applications'
         // to test separation of system admin vs business authority, as requested.
         $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
         $superAdmin->givePermissionTo([
@@ -107,7 +108,7 @@ class RoleAndPermissionSeeder extends Seeder
         ]);
 
         // 4. admin_kelurahan
-        // Entry level: can create child, application, upload doc, submit
+        // Entry level: can create child, application, upload doc, submit, view reports
         $adminKelurahan = Role::firstOrCreate(['name' => 'admin_kelurahan']);
         $adminKelurahan->givePermissionTo([
             'view children',
@@ -115,16 +116,18 @@ class RoleAndPermissionSeeder extends Seeder
             'update children',
             'delete children',
             'submit children',
-            
+
             'view applications',
             'create applications',
             'update applications',
             'submit applications',
-            
+
             'view documents',
             'upload documents',
             'update documents',
             'delete documents',
+
+            'view reports',
         ]);
     }
 }

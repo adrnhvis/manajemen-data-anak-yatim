@@ -37,7 +37,7 @@ class Person extends Model
             return $query;
         }
 
-        if (!$user->organization_unit_id) {
+        if (! $user->organization_unit_id) {
             return $query->whereRaw('1 = 0');
         }
 

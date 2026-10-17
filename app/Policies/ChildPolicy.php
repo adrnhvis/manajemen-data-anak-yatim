@@ -20,14 +20,14 @@ class ChildPolicy
 
     public function create(User $user): bool
     {
-        if (!$user->hasPermissionTo('create children')) {
+        if (! $user->hasPermissionTo('create children')) {
             return false;
         }
 
         $addressId = request()->input('address_id');
         if ($addressId) {
             $address = Address::find($addressId);
-            if (!$address || !$user->isInOrganizationScope($address->village_id)) {
+            if (! $address || ! $user->isInOrganizationScope($address->village_id)) {
                 return false;
             }
         }
@@ -37,14 +37,14 @@ class ChildPolicy
 
     public function update(User $user, Child $child): bool
     {
-        if (!$user->hasPermissionTo('update children') || !$user->canAccessChild($child)) {
+        if (! $user->hasPermissionTo('update children') || ! $user->canAccessChild($child)) {
             return false;
         }
 
         $newAddressId = request()->input('address_id');
         if ($newAddressId && $newAddressId !== $child->address_id) {
             $newAddress = Address::find($newAddressId);
-            if (!$newAddress || !$user->isInOrganizationScope($newAddress->village_id)) {
+            if (! $newAddress || ! $user->isInOrganizationScope($newAddress->village_id)) {
                 return false;
             }
         }

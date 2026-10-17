@@ -2,6 +2,31 @@
 
 Catatan ini mencatat perubahan dan baseline yang dapat diverifikasi dari dokumentasi serta repository. Tanggal menunjukkan tanggal snapshot dokumentasi bila tanggal implementasi historis tidak tersedia; jangan menafsirkan snapshot sebagai tanggal setiap fitur dibuat.
 
+## 2026-10-06
+
+### Added
+
+- Menyelesaikan integrasi menyeluruh pada modul **Data Anak**:
+  - **Identitas & Alamat/Domisili:** Formulir pencatatan anak mencakup NIK, identitas kelahiran, KK, dan Alamat terisolasi per desa/kelurahan pengguna.
+  - **Data Orang Tua & Wali:** Pengelolaan Ayah, Ibu, dan Wali melalui `RelationshipsRelationManager` lengkap dengan status keberadaan (*Masih Hidup, Meninggal Dunia, dsb.*) dan jenis kelamin.
+  - **Permohonan Pengajuan Bantuan:** Pembuatan permohonan bantuan tahunan (`ApplicationsRelationManager`) dengan aksi alur workflow terpadu (*Submit, Validate, Request Revision, Verify, Reject*).
+  - **Dokumen Persyaratan:** Pengelolaan berkas dokumen persyaratan bantuan melalui `DocumentsRelationManager` yang terhubung langsung dengan `DocumentService` (upload aman, validasi MIME/signature, versioning, unduh, dan ganti berkas).
+  - **Rekening Bank:** Pencatatan informasi nomor rekening bank penerima bantuan melalui `BankAccountsRelationManager` dengan tipe pemilik rekening (*anak, ayah, ibu, wali*).
+  - Menambahkan endpoint download privat bertiket autentikasi untuk file dokumen permohonan bantuan.
+
+### Changed
+
+- Status task `FIL-03`, `FIL-04`, `FIL-05`, `FIL-06`, dan `FIL-07` pada `docs/TODO.md` telah diselaraskan ke `DONE`.
+
+### What to Continue
+
+- **Fase Berikutnya:**
+  1. Fitur cetak/ekspor rekapitulasi data bantuan (PDF/Excel) pada halaman Laporan jika diperlukan.
+  2. Implementasi antarmuka master data administratif (`FIL-01`) dan manajemen pengguna sistem (`FIL-02`) untuk Super Admin.
+
+
+
+
 ## 2026-10-02
 
 ### Added
