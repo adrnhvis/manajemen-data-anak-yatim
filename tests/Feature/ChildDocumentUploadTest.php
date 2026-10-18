@@ -8,10 +8,14 @@ use App\Enums\LivingWith;
 use App\Enums\OrganizationUnitType;
 use App\Enums\PersonStatus;
 use App\Filament\Resources\Children\Pages\CreateChild;
+use App\Filament\Resources\Children\Pages\EditChild;
 use App\Models\Address;
+use App\Models\Application;
+use App\Models\Child;
 use App\Models\District;
 use App\Models\Document;
 use App\Models\DocumentCategory;
+use App\Models\DocumentVersion;
 use App\Models\Household;
 use App\Models\OrganizationUnit;
 use App\Models\Province;
@@ -155,9 +159,43 @@ class ChildDocumentUploadTest extends TestCase
         $this->assertDatabaseHas('children', [
             'nik' => '1405010101010099',
         ]);
+
+        $child = Child::where('nik', '1405010101010099')->firstOrFail();
+        $application = Application::where('child_id', $child->id)->firstOrFail();
+
+        $this->assertDatabaseHas('bank_accounts', [
+            'application_id' => $application->id,
+            'account_number' => '1234567890',
+            'account_holder_name' => 'Budi Pratama',
+        ]);
         $this->assertDatabaseHas('documents', [
             'document_category_id' => $category->id,
+            'application_id' => $application->id,
         ]);
+
+        $document = Document::where('application_id', $application->id)->firstOrFail();
+        $this->assertTrue(Storage::disk('local')->exists($document->storage_path));
+
+        Storage::disk('local')->put('temp-uploads/permohonan-replacement.pdf', '%PDF-1.4 replacement');
+
+        Livewire::test(EditChild::class, ['record' => $child->getRouteKey()])
+            ->fillForm([
+                'account_number' => '9876543210',
+                'account_holder_name' => 'Budi Pratama Baru',
+                'document_file_'.$category->id => ['temp-uploads/permohonan-replacement.pdf'],
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('bank_accounts', [
+            'application_id' => $application->id,
+            'account_number' => '9876543210',
+            'account_holder_name' => 'Budi Pratama Baru',
+        ]);
+
+        $document->refresh();
+        $this->assertSame(2, DocumentVersion::where('document_id', $document->id)->count());
+        $this->assertTrue(Storage::disk('local')->exists($document->storage_path));
     }
 
     public function test_kelurahan_admin_can_create_child_with_all_eleven_document_categories(): void
