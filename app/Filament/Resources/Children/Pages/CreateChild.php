@@ -15,11 +15,13 @@ use App\Models\Child;
 use App\Models\ChildRelationship;
 use App\Models\DocumentCategory;
 use App\Models\Person;
+use App\Models\User;
 use App\Services\DocumentService;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -35,8 +37,8 @@ class CreateChild extends CreateRecord
         $addressId = $this->data['address_id'] ?? null;
         if ($addressId) {
             $address = Address::find($addressId);
-            $user = auth()->user();
-            if (! $address || ($user && ! $user->isInOrganizationScope($address->village_id))) {
+            $user = Auth::user();
+            if (! $address || ! ($user instanceof User) || ! $user->isInOrganizationScope($address->village_id)) {
                 abort(403, 'Anda tidak berhak mendaftarkan anak di luar wilayah kelurahan Anda.');
             }
         }
@@ -63,7 +65,8 @@ class CreateChild extends CreateRecord
             ])->toArray();
 
             $child = Child::create($childData);
-            $user = auth()->user();
+            $user = Auth::user();
+            abort_unless($user instanceof User, 403);
 
             // 2. Create Father (Person + Relationship)
             if (! empty($data['father_name'])) {
@@ -119,7 +122,7 @@ class CreateChild extends CreateRecord
                 'period_year' => $data['period_year'] ?? now()->year,
                 'status' => ApplicationStatus::DRAFT->value,
                 'current_review_level' => ReviewLevel::VILLAGE->value,
-                'created_by' => $user->getKey(),
+                'created_by' => $user->getAuthIdentifier(),
             ]);
 
             // 6. Create Bank Account
@@ -137,7 +140,9 @@ class CreateChild extends CreateRecord
                 $categoryId = str_replace('document_file_', '', $key);
                 $category = DocumentCategory::find($categoryId);
                 if (! $category) {
-                    continue;
+                    throw ValidationException::withMessages([
+                        "data.{$key}" => 'Kategori dokumen tidak ditemukan. Silakan muat ulang halaman dan coba lagi.',
+                    ]);
                 }
 
                 $filePath = is_array($filePath) ? Arr::first($filePath) : $filePath;
@@ -146,8 +151,10 @@ class CreateChild extends CreateRecord
                 }
 
                 $storedPath = Storage::disk('local')->path($filePath);
-                if (! file_exists($storedPath)) {
-                    continue;
+                if (! is_file($storedPath)) {
+                    throw ValidationException::withMessages([
+                        "data.{$key}" => 'File dokumen tidak ditemukan setelah diunggah. Silakan unggah ulang file tersebut.',
+                    ]);
                 }
 
                 $file = new UploadedFile(

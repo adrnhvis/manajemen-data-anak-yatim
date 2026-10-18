@@ -4,6 +4,8 @@ use App\Models\DocumentVersion;
 use App\Services\DocumentService;
 use Illuminate\Support\Facades\Route;
 
+Route::redirect('/', '/admin')->name('home');
+
 Route::get('/documents/download/{version}', function (DocumentVersion $version, DocumentService $documentService) {
     $filePath = $documentService->download(auth()->user(), $version);
 

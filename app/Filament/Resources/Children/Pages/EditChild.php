@@ -2,19 +2,31 @@
 
 namespace App\Filament\Resources\Children\Pages;
 
+use App\Enums\ApplicationStatus;
 use App\Enums\Gender;
 use App\Enums\PersonStatus;
 use App\Enums\RelationshipType;
+use App\Enums\ReviewLevel;
 use App\Filament\Resources\Children\ChildResource;
 use App\Models\Address;
+use App\Models\Application;
+use App\Models\BankAccount;
 use App\Models\ChildRelationship;
+use App\Models\DocumentCategory;
 use App\Models\Person;
+use App\Models\User;
+use App\Services\DocumentService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class EditChild extends EditRecord
@@ -60,6 +72,27 @@ class EditChild extends EditRecord
             $data['guardian_status'] = $guardian->status?->value ?? $guardian->status;
         }
 
+        $application = $child->applications()
+            ->with('documents')
+            ->latest()
+            ->first();
+
+        if ($application) {
+            $data['period_year'] = $application->period_year;
+
+            $bankAccount = $application->bankAccounts()->latest()->first();
+            if ($bankAccount) {
+                $data['bank_name'] = $bankAccount->bank_name;
+                $data['account_number'] = $bankAccount->account_number;
+                $data['account_holder_name'] = $bankAccount->account_holder_name;
+                $data['holder_type'] = $bankAccount->holder_type?->value ?? $bankAccount->holder_type;
+            }
+
+            foreach ($application->documents as $document) {
+                $data['document_file_'.$document->document_category_id] = $document->storage_path;
+            }
+        }
+
         return $data;
     }
 
@@ -68,8 +101,8 @@ class EditChild extends EditRecord
         $addressId = $this->data['address_id'] ?? null;
         if ($addressId && $addressId !== $this->getRecord()->address_id) {
             $address = Address::find($addressId);
-            $user = auth()->user();
-            if (! $address || ($user && ! $user->isInOrganizationScope($address->village_id))) {
+            $user = Auth::user();
+            if (! $address || ! ($user instanceof User) || ! $user->isInOrganizationScope($address->village_id)) {
                 abort(403, 'Anda tidak berhak memindahkan anak ke luar wilayah kelurahan Anda.');
             }
         }
@@ -126,8 +159,102 @@ class EditChild extends EditRecord
                 isPrimary: false,
             );
 
+            $this->syncApplicationData($record, $data);
+
             return $record;
         });
+    }
+
+    private function syncApplicationData(Model $child, array $data): void
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 403);
+
+        $application = $child->applications()->latest()->first();
+        if (! $application) {
+            Gate::authorize('create', Application::class);
+
+            $application = Application::create([
+                'child_id' => $child->getKey(),
+                'period_year' => $data['period_year'] ?? now()->year,
+                'status' => ApplicationStatus::DRAFT,
+                'current_review_level' => ReviewLevel::VILLAGE,
+                'created_by' => $user->getAuthIdentifier(),
+            ]);
+        }
+
+        $bankData = Arr::only($data, [
+            'bank_name',
+            'account_number',
+            'account_holder_name',
+            'holder_type',
+        ]);
+
+        $bankAccount = $application->bankAccounts()->latest()->first();
+        if ($bankAccount) {
+            $hasBankChanges = collect($bankData)->contains(
+                fn ($value, $key) => $bankAccount->getRawOriginal($key) !== $value,
+            );
+
+            if ($hasBankChanges) {
+                Gate::authorize('update', $bankAccount);
+                $bankAccount->update($bankData);
+            }
+        } else {
+            Gate::authorize('update', $application);
+            Gate::authorize('create', BankAccount::class);
+            $application->bankAccounts()->create($bankData);
+        }
+
+        $documentService = app(DocumentService::class);
+        foreach ($data as $key => $filePaths) {
+            if (! str_starts_with((string) $key, 'document_file_') || blank($filePaths)) {
+                continue;
+            }
+
+            $categoryId = str_replace('document_file_', '', (string) $key);
+            $filePath = is_array($filePaths) ? Arr::first($filePaths) : $filePaths;
+            if (blank($filePath)) {
+                continue;
+            }
+
+            $existingDocument = $application->documents()
+                ->where('document_category_id', $categoryId)
+                ->latest()
+                ->first();
+
+            if ($existingDocument && $existingDocument->storage_path === $filePath) {
+                continue;
+            }
+
+            $category = DocumentCategory::find($categoryId);
+            if (! $category) {
+                throw ValidationException::withMessages([
+                    "data.{$key}" => 'Kategori dokumen tidak ditemukan. Silakan muat ulang halaman dan coba lagi.',
+                ]);
+            }
+
+            $storedPath = Storage::disk('local')->path($filePath);
+            if (! is_file($storedPath)) {
+                throw ValidationException::withMessages([
+                    "data.{$key}" => 'File dokumen tidak ditemukan setelah diunggah. Silakan unggah ulang file tersebut.',
+                ]);
+            }
+
+            $file = new UploadedFile(
+                $storedPath,
+                basename($filePath),
+                mime_content_type($storedPath) ?: null,
+                null,
+                true,
+            );
+
+            if ($existingDocument) {
+                $documentService->replace($user, $existingDocument, $file);
+            } else {
+                $documentService->upload($user, $application, $category, $file);
+            }
+        }
     }
 
     protected function syncPerson(
