@@ -3,11 +3,14 @@
 namespace App\Filament\Pages;
 
 use App\Enums\ApplicationStatus;
+use App\Enums\OrganizationUnitType;
 use App\Models\Application;
 use App\Models\Child;
+use App\Models\User;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
 
 class ReportPage extends Page
 {
@@ -21,23 +24,32 @@ class ReportPage extends Page
 
     public static function canAccess(): bool
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
-        return $user && ($user->hasRole('super_admin') || $user->hasPermissionTo('view reports'));
+        return $user instanceof User
+            && ($user->hasRole('super_admin') || $user->hasPermissionTo('view reports'));
     }
 
     public function getViewData(): array
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
-        if (! $user) {
+        if (! $user instanceof User) {
             return [];
         }
 
         $childQuery = Child::query()->forUser($user);
         $appQuery = Application::query()->forUser($user);
+        $organizationUnit = $user->organizationUnit;
+        $scopeDescription = match ($organizationUnit?->type) {
+            OrganizationUnitType::VILLAGE => 'Kelurahan/Desa: '.$organizationUnit->name,
+            OrganizationUnitType::DISTRICT => 'Kecamatan: '.$organizationUnit->name.' (seluruh kelurahan/desa di kecamatan ini)',
+            OrganizationUnitType::REGENCY => 'Kabupaten: '.$organizationUnit->name.' (seluruh kelurahan/desa di kabupaten ini)',
+            default => $user->hasRole('super_admin') ? 'Seluruh wilayah' : 'Wilayah belum ditetapkan',
+        };
 
         return [
+            'scopeDescription' => $scopeDescription,
             'totalChildren' => (clone $childQuery)->count(),
             'totalApplications' => (clone $appQuery)->count(),
             'totalDraft' => (clone $appQuery)->where('status', ApplicationStatus::DRAFT)->count(),

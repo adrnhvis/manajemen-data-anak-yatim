@@ -73,6 +73,7 @@ class EditChild extends EditRecord
         }
 
         $application = $child->applications()
+            ->withTrashed()
             ->with('documents')
             ->latest()
             ->first();
@@ -170,13 +171,22 @@ class EditChild extends EditRecord
         $user = Auth::user();
         abort_unless($user instanceof User, 403);
 
-        $application = $child->applications()->latest()->first();
+        $periodYear = (int) ($data['period_year'] ?? now()->year);
+        $application = $child->applications()
+            ->withTrashed()
+            ->where('period_year', $periodYear)
+            ->first();
+
+        if ($application?->trashed()) {
+            $application->restore();
+        }
+
         if (! $application) {
             Gate::authorize('create', Application::class);
 
             $application = Application::create([
                 'child_id' => $child->getKey(),
-                'period_year' => $data['period_year'] ?? now()->year,
+                'period_year' => $periodYear,
                 'status' => ApplicationStatus::DRAFT,
                 'current_review_level' => ReviewLevel::VILLAGE,
                 'created_by' => $user->getAuthIdentifier(),

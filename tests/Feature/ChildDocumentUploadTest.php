@@ -177,6 +177,7 @@ class ChildDocumentUploadTest extends TestCase
         $this->assertTrue(Storage::disk('local')->exists($document->storage_path));
 
         Storage::disk('local')->put('temp-uploads/permohonan-replacement.pdf', '%PDF-1.4 replacement');
+        $application->delete();
 
         Livewire::test(EditChild::class, ['record' => $child->getRouteKey()])
             ->fillForm([
@@ -187,6 +188,8 @@ class ChildDocumentUploadTest extends TestCase
             ->call('save')
             ->assertHasNoFormErrors();
 
+        $this->assertSame(1, Application::withTrashed()->where('child_id', $child->id)->count());
+        $this->assertFalse($application->fresh()->trashed());
         $this->assertDatabaseHas('bank_accounts', [
             'application_id' => $application->id,
             'account_number' => '9876543210',

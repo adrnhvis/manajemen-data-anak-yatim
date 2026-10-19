@@ -1,4 +1,9 @@
 <x-filament-panels::page>
+    <div class="mb-4 rounded-xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-900 dark:bg-primary-950/30">
+        <div class="text-sm font-medium text-primary-700 dark:text-primary-300">Cakupan Laporan</div>
+        <div class="mt-1 text-base font-semibold text-gray-900 dark:text-gray-100">{{ $scopeDescription }}</div>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
             <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Anak Terdata</div>
