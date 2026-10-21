@@ -13,8 +13,6 @@ use Illuminate\Support\Facades\Auth;
  */
 trait RestrictedToRegencyLevel
 {
-    // protected static bool $isDiscovered = false; // Konflik dengan Filament Widget v3
-
     public static function canView(): bool
     {
         $user = Auth::user();

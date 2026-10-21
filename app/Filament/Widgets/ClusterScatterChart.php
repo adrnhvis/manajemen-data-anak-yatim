@@ -11,6 +11,8 @@ class ClusterScatterChart extends ChartWidget
 {
     use RestrictedToRegencyLevel;
 
+    protected static bool $isDiscovered = false; // hanya tampil di ReportPage, bukan dashboard
+
     protected int|string|array $columnSpan = 1;
 
     public function getHeading(): ?string

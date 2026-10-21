@@ -9,7 +9,6 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
-use Illuminate\Support\Str;
 
 class RunWorkflowClustering extends Command
 {
@@ -115,7 +114,7 @@ class RunWorkflowClustering extends Command
     private function resultRow(string $runId, array $r, bool $clustered, ?int $index, ?string $label, $now): array
     {
         return [
-            'id' => (string) Str::ulid(),
+            'id' => (string) \Illuminate\Support\Str::ulid(),
             'cluster_run_id' => $runId,
             'village_id' => $r['village_id'],
             'village_name' => $r['village_name'],

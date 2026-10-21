@@ -21,7 +21,7 @@ from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 LOG_FEATURES = {"avg_resubmit_days", "avg_first_submit_days"}
-MIN_VILLAGES = 5
+MIN_VILLAGES = 10
 RANDOM_STATE = 42
 
 CLUSTER_NAMES = {
@@ -80,32 +80,24 @@ def preprocess(features, raw):
 
 def choose_k(z, k_fixed, kmin, kmax):
     n = z.shape[0]
-    min_size = max(2, math.ceil(0.05 * n))
+    min_size = max(3, math.ceil(0.05 * n))
     if k_fixed is not None:
         if not 2 <= k_fixed < n:
             fail(f"k={k_fixed} tidak valid untuk {n} wilayah.")
         candidates = [k_fixed]
     else:
-        actual_kmax = min(kmax, n - 1)
-        if actual_kmax < kmin:
-            actual_kmax = kmin
-        candidates = list(range(kmin, actual_kmax + 1))
+        candidates = list(range(kmin, min(kmax, n - 1) + 1))
 
     scores, fits = {}, {}
     for k in candidates:
-        try:
-            model = KMeans(n_clusters=k, n_init=20, random_state=RANDOM_STATE).fit(z)
-            sizes = np.bincount(model.labels_, minlength=k)
-            scores[k] = float(silhouette_score(z, model.labels_))
-            fits[k] = (model, int(sizes.min()))
-        except Exception:
-            pass
-
-    if not scores:
-        # Fallback if silhouette fails due to identical points
-        k = candidates[0]
         model = KMeans(n_clusters=k, n_init=20, random_state=RANDOM_STATE).fit(z)
-        return k, model, {k: 0.0}
+        sizes = np.bincount(model.labels_, minlength=k)
+        n_labels = len(np.unique(model.labels_))
+        if n_labels < 2 or n_labels >= n:
+            scores[k] = -1.0
+        else:
+            scores[k] = float(silhouette_score(z, model.labels_))
+        fits[k] = (model, int(sizes.min()))
 
     # Mode otomatis: abaikan k yang menghasilkan cluster sangat kecil (biasanya outlier),
     # kecuali semua kandidat memang demikian.

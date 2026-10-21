@@ -11,6 +11,8 @@ class ClusterSummaryStats extends StatsOverviewWidget
 {
     use RestrictedToRegencyLevel;
 
+    protected static bool $isDiscovered = false; // hanya tampil di ReportPage, bukan dashboard
+
     protected function getStats(): array
     {
         $run = ClusterRun::latestRun();

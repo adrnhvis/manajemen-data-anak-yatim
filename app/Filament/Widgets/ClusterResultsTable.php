@@ -15,6 +15,8 @@ class ClusterResultsTable extends TableWidget
 {
     use RestrictedToRegencyLevel;
 
+    protected static bool $isDiscovered = false; // hanya tampil di ReportPage, bukan dashboard
+
     public function table(Table $table): Table
     {
         $k = ClusterRun::latestRun()?->k ?? 1;
