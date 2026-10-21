@@ -4,6 +4,10 @@ namespace App\Filament\Pages;
 
 use App\Enums\ApplicationStatus;
 use App\Enums\OrganizationUnitType;
+use App\Filament\Widgets\ClusterResultsTable;
+use App\Filament\Widgets\ClusterScatterChart;
+use App\Filament\Widgets\ClusterSizeChart;
+use App\Filament\Widgets\ClusterSummaryStats;
 use App\Models\Application;
 use App\Models\Child;
 use App\Models\User;
@@ -28,6 +32,25 @@ class ReportPage extends Page
 
         return $user instanceof User
             && ($user->hasRole('super_admin') || $user->hasPermissionTo('view reports'));
+    }
+
+    /**
+     * Pengelompokan kinerja administrasi (K-Means). Tiap widget memeriksa
+     * sendiri hak aksesnya lewat canView() (hanya super admin / admin kabupaten).
+     */
+    protected function getFooterWidgets(): array
+    {
+        return [
+            ClusterSummaryStats::class,
+            ClusterSizeChart::class,
+            ClusterScatterChart::class,
+            ClusterResultsTable::class,
+        ];
+    }
+
+    public function getFooterWidgetsColumns(): int|array
+    {
+        return 2;
     }
 
     public function getViewData(): array
