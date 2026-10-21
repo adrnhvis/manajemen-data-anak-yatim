@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             DocumentCategorySeeder::class,
             DummyDataSeeder::class,
+            DummyDataForRolesSeeder::class,
         ]);
     }
 }
