@@ -362,7 +362,6 @@ Aplikasi ini menyimpan **data anak** yang sensitif. Sebelum dipakai sungguhan:
 
 | Dokumen | Isi |
 |---|---|
-| [`docs/database-design.md`](docs/database-design.md) | Rancangan awal database |
 | [`.review/`](.review) | Catatan arsitektur, keputusan, dan domain |
 
 ---
