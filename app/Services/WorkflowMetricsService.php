@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ApplicationStatus;
 use App\Models\Application;
 use App\Models\Village;
 
@@ -19,7 +20,7 @@ class WorkflowMetricsService
     private const SECONDS_PER_DAY = 86400;
 
     /**
-     * @return array{rows: list<array<string, mixed>>, villages_total: int}
+     * @return array{rows: list<array<string, mixed>>, villages_total: int, without_history: int}
      */
     public function villageMetrics(?int $year = null): array
     {
@@ -27,19 +28,26 @@ class WorkflowMetricsService
 
         /** @var array<string, array<string, mixed>> $acc */
         $acc = [];
+        $withoutHistory = 0; // sudah bukan draft, tetapi tidak punya catatan 'submit' di workflow_histories
 
         Application::query()
-            ->select(['applications.id', 'applications.created_at', 'addresses.village_id'])
+            ->select(['applications.id', 'applications.status', 'applications.created_at', 'addresses.village_id'])
             ->join('children', 'children.id', '=', 'applications.child_id')
             ->join('addresses', 'addresses.id', '=', 'children.address_id')
             ->whereNull('children.deleted_at')
             ->when($year, fn ($q) => $q->where('applications.period_year', $year))
             ->with(['workflowHistories' => fn ($q) => $q->orderBy('acted_at')->orderBy('id')])
-            ->chunkById(500, function ($applications) use (&$acc) {
+            ->chunkById(500, function ($applications) use (&$acc, &$withoutHistory) {
                 foreach ($applications as $application) {
                     $metrics = $this->applicationMetrics($application);
                     if ($metrics === null) {
-                        continue; // masih draft, belum pernah diajukan
+                        // Draft murni memang belum diajukan. Status lain tanpa riwayat = data tidak lengkap
+                        // (umumnya dari seeder dummy), tidak bisa dianalisis.
+                        if ($application->status !== ApplicationStatus::DRAFT) {
+                            $withoutHistory++;
+                        }
+
+                        continue;
                     }
                     $v = $application->village_id;
                     $acc[$v] ??= ['n' => 0, 'returns' => 0, 'rejected' => 0, 'resubmit' => [], 'first' => []];
@@ -69,7 +77,7 @@ class WorkflowMetricsService
             ];
         }
 
-        return ['rows' => $rows, 'villages_total' => $villages->count()];
+        return ['rows' => $rows, 'villages_total' => $villages->count(), 'without_history' => $withoutHistory];
     }
 
     /**

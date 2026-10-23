@@ -28,8 +28,9 @@ class ClusterSummaryStats extends StatsOverviewWidget
                 ->color($run->qualityColor()),
             Stat::make('Wilayah dikelompokkan', $run->n_clustered)
                 ->description("{$run->n_excluded} data belum cukup · {$run->n_without_applications} belum pernah mengajukan"),
-            Stat::make('Dijalankan', $run->created_at->format('d/m/Y H:i'))
-                ->description($run->period_year ? "Periode {$run->period_year}" : 'Semua periode'),
+            Stat::make('Sumber data', $run->is_simulation ? 'SIMULASI' : 'Data nyata')
+                ->description('Dijalankan '.$run->created_at->format('d/m/Y H:i').' · '.($run->period_year ? "periode {$run->period_year}" : 'semua periode'))
+                ->color($run->is_simulation ? 'danger' : 'success'),
         ];
     }
 }

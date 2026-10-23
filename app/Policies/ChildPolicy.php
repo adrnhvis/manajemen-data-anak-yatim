@@ -62,8 +62,17 @@ class ChildPolicy
         return $user->hasPermissionTo('delete children') && $user->canAccessChild($child);
     }
 
+    /**
+     * Hapus permanen tidak bisa dibatalkan, jadi hanya super admin.
+     * Kelurahan/kecamatan/kabupaten tetap bisa menghapus sementara (soft delete) dan memulihkannya.
+     */
     public function forceDelete(User $user, Child $child): bool
     {
-        return $user->hasPermissionTo('delete children') && $user->canAccessChild($child);
+        return $user->hasRole('super_admin');
+    }
+
+    public function forceDeleteAny(User $user): bool
+    {
+        return $user->hasRole('super_admin');
     }
 }

@@ -8,9 +8,11 @@ use App\Filament\Widgets\ClusterResultsTable;
 use App\Filament\Widgets\ClusterScatterChart;
 use App\Filament\Widgets\ClusterSizeChart;
 use App\Filament\Widgets\ClusterSummaryStats;
+use App\Filament\Widgets\ReportStatusStats;
 use App\Models\Application;
 use App\Models\Child;
 use App\Models\User;
+use App\Services\DashboardService;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -32,6 +34,19 @@ class ReportPage extends Page
 
         return $user instanceof User
             && ($user->hasRole('super_admin') || $user->hasPermissionTo('view reports'));
+    }
+
+    /** Cakupan wilayah laporan ditampilkan sebagai subjudul halaman. */
+    public function getSubheading(): ?string
+    {
+        $user = Auth::user();
+
+        return $user instanceof User ? 'Cakupan: '.app(DashboardService::class)->scopeDescription($user) : null;
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [ReportStatusStats::class];
     }
 
     /**

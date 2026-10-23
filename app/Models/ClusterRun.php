@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'period_year', 'k', 'silhouette', 'quality', 'inertia', 'n_clustered', 'n_excluded',
+    'period_year', 'is_simulation', 'k', 'silhouette', 'quality', 'inertia', 'n_clustered', 'n_excluded',
     'n_without_applications', 'min_applications', 'feature_names', 'centroids', 'k_scores',
 ])]
 class ClusterRun extends Model
@@ -18,6 +18,7 @@ class ClusterRun extends Model
     protected function casts(): array
     {
         return [
+            'is_simulation' => 'boolean',
             'silhouette' => 'float',
             'inertia' => 'float',
             'feature_names' => 'array',

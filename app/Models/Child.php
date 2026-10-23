@@ -4,12 +4,15 @@ namespace App\Models;
 
 use App\Enums\Gender;
 use App\Enums\OrganizationUnitType;
+use App\Enums\PersonStatus;
+use App\Enums\RelationshipType;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable([
@@ -53,25 +56,62 @@ class Child extends Model
         return $this->hasMany(Application::class);
     }
 
+    /** Permohonan dengan periode terbaru (untuk kolom status di tabel). */
+    public function latestApplication(): HasOne
+    {
+        return $this->hasOne(Application::class)->ofMany('period_year', 'max');
+    }
+
     public function getParentStatusAttribute(): string
     {
-        $father = $this->relationships()->where('relationship_type', 'father')->with('person')->first()?->person;
-        $mother = $this->relationships()->where('relationship_type', 'mother')->with('person')->first()?->person;
+        $this->loadMissing('relationships.person');
 
-        $fatherDead = $father && ($father->status?->value ?? $father->status) === 'deceased';
-        $motherDead = $mother && ($mother->status?->value ?? $mother->status) === 'deceased';
+        $statusOf = fn (RelationshipType $type) => $this->relationships
+            ->firstWhere('relationship_type', $type)?->person?->status;
+
+        $fatherDead = $statusOf(RelationshipType::FATHER) === PersonStatus::DECEASED;
+        $motherDead = $statusOf(RelationshipType::MOTHER) === PersonStatus::DECEASED;
 
         if ($fatherDead && $motherDead) {
             return 'Yatim Piatu';
         }
+
         if ($fatherDead) {
             return 'Yatim';
         }
+
         if ($motherDead) {
             return 'Piatu';
         }
 
         return 'Lengkap';
+    }
+
+    /** Padanan SQL dari parent_status: Yatim | Piatu | Yatim Piatu | Lengkap. */
+    public function scopeParentStatus($query, string $status)
+    {
+        $deceased = fn (RelationshipType $type) => fn ($relationship) => $relationship
+            ->where('relationship_type', $type->value)
+            ->whereHas('person', fn ($person) => $person->where('status', PersonStatus::DECEASED->value));
+
+        $fatherDead = $deceased(RelationshipType::FATHER);
+        $motherDead = $deceased(RelationshipType::MOTHER);
+
+        return match ($status) {
+            'Yatim Piatu' => $query->whereHas('relationships', $fatherDead)->whereHas('relationships', $motherDead),
+            'Yatim' => $query->whereHas('relationships', $fatherDead)->whereDoesntHave('relationships', $motherDead),
+            'Piatu' => $query->whereHas('relationships', $motherDead)->whereDoesntHave('relationships', $fatherDead),
+            'Lengkap' => $query->whereDoesntHave('relationships', $fatherDead)->whereDoesntHave('relationships', $motherDead),
+            default => $query,
+        };
+    }
+
+    /** Anak yang usianya antara $min dan $max tahun (inklusif). */
+    public function scopeAgeBetween($query, int $min, int $max)
+    {
+        return $query
+            ->whereDate('birth_date', '<=', now()->subYears($min))
+            ->whereDate('birth_date', '>', now()->subYears($max + 1));
     }
 
     public function scopeForUser($query, User $user)

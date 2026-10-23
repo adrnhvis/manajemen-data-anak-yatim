@@ -3,15 +3,20 @@
 namespace App\Filament\Resources\Applications;
 
 use App\Enums\ApplicationStatus;
-use App\Enums\ReviewLevel;
 use App\Filament\Resources\Applications\Pages\ListApplications;
+use App\Filament\Resources\Applications\Pages\ViewApplication;
+use App\Filament\Resources\Applications\Schemas\ApplicationInfolist;
+use App\Filament\Resources\Children\Tables\ChildrenTable;
 use App\Models\Application;
 use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -51,33 +56,25 @@ class ApplicationResource extends Resource
         $user = Auth::user();
         $query = parent::getEloquentQuery()->with([
             'child.household',
-            'child.address.village',
+            'child.address.village.district',
         ]);
 
         if (! $user instanceof User) {
             return $query->whereRaw('1 = 0');
         }
 
-        $query->forUser($user);
-
-        if ($user->hasRole('admin_kecamatan')) {
-            return $query
-                ->where('status', ApplicationStatus::SUBMITTED)
-                ->where('current_review_level', ReviewLevel::DISTRICT);
+        // Antrian / Riwayat / Semua diatur oleh tab di ListApplications.
+        // Di sini cukup dipastikan hanya peran review yang boleh membaca, dan hanya dalam wilayahnya.
+        if (! $user->hasRole('admin_kecamatan') && ! $user->hasRole('admin_kabupaten')) {
+            return $query->whereRaw('1 = 0');
         }
 
-        if ($user->hasRole('admin_kabupaten')) {
-            return $query
-                ->where('status', ApplicationStatus::VALIDATED)
-                ->where('current_review_level', ReviewLevel::REGENCY);
-        }
-
-        return $query->whereRaw('1 = 0');
+        return $query->forUser($user);
     }
 
-    public static function form(Schema $schema): Schema
+    public static function infolist(Schema $schema): Schema
     {
-        return $schema;
+        return ApplicationInfolist::configure($schema);
     }
 
     public static function table(Table $table): Table
@@ -99,6 +96,10 @@ class ApplicationResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                TextColumn::make('child.address.village.district.name')
+                    ->label('Kecamatan')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('period_year')
                     ->label('Tahun Periode')
                     ->sortable(),
@@ -106,23 +107,8 @@ class ApplicationResource extends Resource
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn (Application $record) => match ($record->status) {
-                        ApplicationStatus::DRAFT => 'gray',
-                        ApplicationStatus::SUBMITTED => 'info',
-                        ApplicationStatus::REVISION_REQUIRED => 'warning',
-                        ApplicationStatus::VALIDATED => 'primary',
-                        ApplicationStatus::VERIFIED => 'success',
-                        ApplicationStatus::REJECTED => 'danger',
-                    })
-                    ->formatStateUsing(fn ($state) => match ($state?->value ?? $state) {
-                        'draft' => 'Draft',
-                        'submitted' => 'Menunggu Pengecekan Kecamatan',
-                        'revision_required' => 'Perlu Revisi',
-                        'validated' => 'Menunggu Verifikasi Kabupaten',
-                        'verified' => 'Terverifikasi Final',
-                        'rejected' => 'Ditolak',
-                        default => $state,
-                    })
+                    ->formatStateUsing(fn ($state) => $state instanceof ApplicationStatus ? $state->label() : $state)
+                    ->color(fn ($state) => $state instanceof ApplicationStatus ? $state->color() : 'gray')
                     ->sortable(),
 
                 TextColumn::make('current_review_level')
@@ -139,14 +125,31 @@ class ApplicationResource extends Resource
                     ->label('Tanggal Diajukan')
                     ->dateTime('d M Y H:i')
                     ->sortable(),
+
+                TextColumn::make('updated_at')
+                    ->label('Terakhir Diperbarui')
+                    ->since()
+                    ->sortable(),
             ])
             ->defaultSort('submitted_at', 'desc')
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options(collect(ApplicationStatus::cases())->mapWithKeys(fn (ApplicationStatus $s) => [$s->value => $s->label()])->all()),
+                SelectFilter::make('period_year')
+                    ->label('Periode')
+                    ->options(fn (): array => Application::query()->distinct()->orderByDesc('period_year')->pluck('period_year', 'period_year')->all()),
+                SelectFilter::make('village')
+                    ->label('Kelurahan / Desa')
+                    ->searchable()
+                    ->options(fn (): array => ChildrenTable::villageOptions())
+                    ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
+                        ? $query->whereHas('child.address', fn ($q) => $q->where('village_id', $data['value']))
+                        : $query),
+            ], layout: FiltersLayout::AboveContentCollapsible)
+            ->persistFiltersInSession()
             ->recordActions([
-                ApplicationReviewActions::makeReviewDetails(),
-                ApplicationReviewActions::makeValidate(),
-                ApplicationReviewActions::makeRequestRevision(),
-                ApplicationReviewActions::makeVerify(),
-                ApplicationReviewActions::makeReject(),
+                ViewAction::make()->label('Periksa')->icon('heroicon-o-eye'),
             ]);
     }
 
@@ -154,6 +157,7 @@ class ApplicationResource extends Resource
     {
         return [
             'index' => ListApplications::route('/'),
+            'view' => ViewApplication::route('/{record}'),
         ];
     }
 }

@@ -124,6 +124,11 @@ def main() -> None:
         fail(f"Data terlalu sedikit untuk K-Means: {n} wilayah (minimal {MIN_VILLAGES}).")
 
     z = preprocess(features, raw)
+    if np.unique(np.round(z, 9), axis=0).shape[0] < 3:
+        fail(
+            f"Hanya {np.unique(np.round(z, 9), axis=0).shape[0]} pola nilai fitur yang berbeda di {n} wilayah. "
+            "K-Means tidak bermakna pada data tanpa variasi (mis. seeder dummy tanpa riwayat revisi/penolakan)."
+        )
     k, model, scores = choose_k(z, args.k, args.kmin, args.kmax)
 
     # Urutkan cluster dari paling lancar ke paling berat (rata-rata fitur terstandarisasi).
