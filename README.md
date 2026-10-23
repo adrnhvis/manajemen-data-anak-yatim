@@ -9,7 +9,7 @@ lengkap dengan dashboard, laporan, dan analisis pengelompokan wilayah (K-Means).
 ![PHP](https://img.shields.io/badge/PHP-8.3+-777BB4?logo=php&logoColor=white)
 ![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white)
 ![Filament](https://img.shields.io/badge/Filament-5-F59E0B)
-![Python](https://img.shields.io/badge/Python-K--Means-3776AB?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-K--Means%20--%20Silhouette%20Score-3776AB?logo=python&logoColor=white)
 
 </div>
 
